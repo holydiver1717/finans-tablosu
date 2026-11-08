@@ -94,6 +94,7 @@ rm.onclick=e=>{if(e.target===rm)rm.classList.remove('open');};
 load();
 if(rows.length===0){addRow(4000,'enPara','2026-11-13','gerisayim');addRow(9355,'YapıKredi','2026-11-13','gerisayim');addRow(19093,'Garanti','2026-11-13','gerisayim');addRow(12500,'kira+aidat','2026-05-15','gerisayim');}
 render();
+setInterval(render, 60000);
 </script>
 <script>
 if ('serviceWorker' in navigator) {
