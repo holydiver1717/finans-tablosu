@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="./manifest.json">
+<title>Aylık Finans Tablosu</title>
+<style>
+:root{--bg:#f0f2f5;--card:#ffffff;--primary:#2563eb;--success:#16a34a;--danger:#dc2626;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
+body{background:var(--bg);color:var(--text);padding:16px;}
+.container{max-width:900px;margin:0 auto;}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+h1{font-size:1.25rem;color:var(--primary);}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;min-width:140px;box-shadow:0 2px 4px rgba(0,0,0,0.05);cursor:default;}
+.stat-card.clickable{cursor:pointer;}
+.stat-card.clickable:hover{background:#f9fafb;}
+.stat-card .label{font-size:.75rem;color:var(--muted);display:block;margin-bottom:6px;}
+.stat-card .value{font-size:1.3rem;font-weight:700;color:var(--text);word-break:break-all;}
+.stat-card .value.red{color:var(--danger);}.stat-card .value.green{color:var(--success);}.stat-card .value.blue{color:var(--primary);}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:12px;overflow:hidden;border:1px solid var(--border);margin-bottom:16px;}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);}
+th{background:#f9fafb;font-weight:600;font-size:.8rem;color:var(--muted);text-transform:uppercase;}
+tr:last-child td{border-bottom:none;}
+tr:hover{background:#f9fafb;}
+input[type="number"],input[type="date"],input[type="text"],select{padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:.9rem;width:100%;}
+.btn{padding:7px 12px;border-radius:6px;border:none;cursor:pointer;font-weight:600;font-size:.85rem;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:var(--primary);color:white;}
+.btn-success{background:var(--success);color:white;}
+.btn-danger{background:var(--danger);color:white;}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-small{padding:3px 7px;font-size:.75rem;}
+.row-actions{display:flex;gap:5px;align-items:center;}
+.status-badge{padding:3px 10px;border-radius:12px;font-size:.75rem;font-weight:600;display:inline-block;}
+.status-odendi{background:#dcfce7;color:var(--success);}
+.status-beklemede{background:#fee2e2;color:var(--danger);}
+.status-gerisayim{background:#dbeafe;color:var(--primary);}
+.asgari-note{font-size:0.7rem;color:var(--muted);margin-left:6px;}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:16px;}
+.modal.open{display:flex;}
+.modal-content{background:var(--card);border-radius:12px;padding:20px;width:100%;max-width:400px;box-shadow:0 10px 25px rgba(0,0,0,0.2);}
+.modal-content h2{margin-bottom:14px;font-size:1.05rem;color:var(--primary);}
+.modal-content .form-group{margin-bottom:12px;}
+.modal-content .form-group label{display:block;font-size:.8rem;margin-bottom:5px;color:var(--muted);}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
+@media (max-width:600px){body{padding:10px;}.stat-card{min-width:120px;padding:12px;}.stat-card .value{font-size:1.1rem;}table{font-size:.85rem;}th,td{padding:8px 10px;}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>📊 Aylık Finans Tablosu</h1>
+</header>
+<div class="stats">
+<div class="stat-card clickable" id="btnMaas"><span class="label">Güncel Maaş (J1)</span><span class="value blue" id="valMaas">0,00 TL</span></div>
+<div class="stat-card"><span class="label">Toplam Borç / Gider (G15)</span><span class="value red" id="valToplam">0,00 TL</span></div>
+<div class="stat-card"><span class="label">Kalan Maaş (G14)</span><span class="value green" id="valKalan">0,00 TL</span></div>
+</div>
+<table id="tbl">
+<thead><tr><th>Tutar (TL)</th><th>Kurum / Gider İsmi</th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr></thead>
+<tbody id="tblBody"></tbody>
+</table>
+<!-- Modal: Satır düzenleme -->
+<div class="modal" id="rowModal">
+<div class="modal-content">
+<h2 id="rowModalTitle">Satır Düzenle</h2>
+<div class="form-group"><label>Tutar (TL)</label><input type="number" id="eTutar" step="0.01"></div>
+<div class="form-group"><label>Kurum / Gider İsmi</label><input type="text" id="eIsim"></div>
+<div class="form-group"><label>Tarih (gg.aa.yy)</label><input type="date" id="eTarih"></div>
+<div class="form-group"><label>Durum</label><select id="eDurum"><option value="gerisayim">Geri Sayım (varsayılan)</option><option value="odendi">Ödendi</option><option value="odeme_yapilmadi">Ödeme Yapılmadı</option></select></div>
+<div class="modal-actions"><button class="btn btn-ghost" id="closeRow">İptal</button><button class="btn btn-primary" id="saveRow">Kaydet</button></div>
+</div>
+</div>
+<script>
+const KEY='finans_v1';
+let maas=0,rows=[];
+function fmt(n){return n.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2})+' TL';}
+function pd(s){if(!s)return null;const d=new Date(s);return isNaN(d)?null:d;}
+function dd(d){if(!d)return '';const g=String(d.getDate()).padStart(2,'0');const a=String(d.getMonth()+1).padStart(2,'0');const y=String(d.getFullYear()).slice(-2);return g+'.'+a+'.'+y;}
+function load(){const r=localStorage.getItem(KEY);if(r){try{const j=JSON.parse(r);maas=j.maas||0;rows=j.rows||[];}catch{}}}
+function save(){localStorage.setItem(KEY,JSON.stringify({maas,rows}));}
+function addRow(t=0,i='',d='',st='gerisayim'){rows.push({id:Date.now()+Math.random(),tutar:Number(t||0),isim:i||'',tarih:d||'',durum:st||'gerisayim'});save();render();}
+function del(id){rows=rows.filter(r=>r.id!==id);save();render();}
+function upd(id,f){const r=rows.find(x=>x.id===id);if(r){Object.assign(r,f);save();render();}}
+function stTxt(r){if(r.durum==='odendi')return{text:'Ödendi',c:'status-odendi'};if(r.durum==='odeme_yapilmadi')return{text:'Ödeme Yapılmadı',c:'status-beklemede'};const d=pd(r.tarih);if(!d)return{text:'Tarih Yok',c:'status-beklemede'};const now=new Date();now.setHours(0,0,0,0);const df=Math.ceil((d-now)/86400000);if(df<0)return{text:'Ödeme Yapılmadı',c:'status-beklemede'};if(df===0)return{text:'Bugün',c:'status-odendi'};return{text:df+' gün kaldı',c:'status-gerisayim'};}
+function render(){const b=document.getElementById('tblBody');b.innerHTML='';let top=0;rows.forEach((r,i)=>{top+=r.tutar;const s=stTxt(r);const tr=document.createElement('tr');tr.innerHTML=`<td>${fmt(r.tutar)} <span class="asgari-note">Asgari: ${fmt(r.tutar*0.2)}</span></td><td>${r.isim||'-'}</td><td>${dd(pd(r.tarih))||'-'}</td><td><span class="status-badge ${s.c}">${s.text}</span></td><td class="row-actions"><button class="btn btn-small btn-ghost" onclick="openRow(${r.id})" title="Düzenle">✎</button><button class="btn btn-small btn-danger" onclick="del(${r.id})" title="Sil">−</button>${i===rows.length-1?'<button class="btn btn-small btn-success" onclick="addRow()" title="Ekle">+</button>':''}</td>`;b.appendChild(tr);});document.getElementById('valMaas').textContent=fmt(maas);document.getElementById('valToplam').textContent=fmt(top);document.getElementById('valKalan').textContent=fmt(maas-top);}
+document.getElementById('btnMaas').onclick=function(){const v=prompt('Yeni maaş (TL):',maas);if(v!==null){maas=parseFloat(v)||0;save();render();}};
+let eid=null;const rm=document.getElementById('rowModal');
+function openRow(id){eid=id;const r=rows.find(x=>x.id===id);document.getElementById('eTutar').value=r.tutar;document.getElementById('eIsim').value=r.isim;document.getElementById('eTarih').value=r.tarih;document.getElementById('eDurum').value=r.durum;rm.classList.add('open');}
+document.getElementById('closeRow').onclick=()=>rm.classList.remove('open');
+document.getElementById('saveRow').onclick=()=>{upd(eid,{tutar:parseFloat(document.getElementById('eTutar').value)||0,isim:document.getElementById('eIsim').value,tarih:document.getElementById('eTarih').value,durum:document.getElementById('eDurum').value});rm.classList.remove('open');eid=null;};
+rm.onclick=e=>{if(e.target===rm)rm.classList.remove('open');};
+load();
+if(rows.length===0){addRow(4000,'enPara','2026-11-13','gerisayim');addRow(9355,'YapıKredi','2026-11-13','gerisayim');addRow(19093,'Garanti','2026-11-13','gerisayim');addRow(12500,'kira+aidat','2026-05-15','gerisayim');}
+render();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then((registration) => {
+      console.log('SW registered:', registration.scope);
+    })
+    .catch((error) => {
+      console.log('SW registration failed:', error);
+    });
+}
+</script>
+</body>
+</html>
